@@ -1,26 +1,245 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --felt-900: #0d3b2e;
+  --felt-800: #114a39;
+  --felt-700: #1a5c47;
+
+  --paper-50: #fdf6e3;
+  --paper-100: #f7ecd0;
+  --paper-200: #efdcae;
+  --paper-300: #e3c485;
+
+  --marigold: #f4a01c;
+  --marigold-dark: #d97e0a;
+  --vermilion: #e2483a;
+  --vermilion-dark: #b8281c;
+  --plum: #5b2a86;
+  --teal: #128f88;
+  --gold: #e8b21e;
+
+  --ink: #2b2118;
+  --ink-soft: #5a4a38;
+
+  --background: var(--felt-900);
+  --foreground: var(--paper-50);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-felt-900: var(--felt-900);
+  --color-felt-800: var(--felt-800);
+  --color-felt-700: var(--felt-700);
+
+  --color-paper-50: var(--paper-50);
+  --color-paper-100: var(--paper-100);
+  --color-paper-200: var(--paper-200);
+  --color-paper-300: var(--paper-300);
+
+  --color-marigold: var(--marigold);
+  --color-marigold-dark: var(--marigold-dark);
+  --color-vermilion: var(--vermilion);
+  --color-vermilion-dark: var(--vermilion-dark);
+  --color-plum: var(--plum);
+  --color-teal: var(--teal);
+  --color-gold: var(--gold);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+
+  --font-display: var(--font-baloo), system-ui, sans-serif;
+  --font-bangla: var(--font-hind), system-ui, sans-serif;
+  --font-sans: var(--font-hind), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
+}
+
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* iOS safe-area padding helpers (notch + home indicator). */
+.safe-px {
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+}
+
+.safe-pt {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+.safe-pb {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Hide scrollbar while keeping horizontal scroll (reaction bar on narrow phones). */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fluid display heading: never overflows a 320px screen. */
+.fluid-title {
+  font-size: clamp(2rem, 11vw, 3.25rem);
+  line-height: 1;
 }
 
 body {
-  background: var(--background);
+  background: radial-gradient(
+    120% 120% at 50% 0%,
+    var(--felt-700) 0%,
+    var(--felt-900) 70%
+  );
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.felt-texture {
+  background-image: radial-gradient(
+    rgba(0, 0, 0, 0.12) 1px,
+    transparent 1px
+  );
+  background-size: 7px 7px;
+}
+
+.paper {
+  background: linear-gradient(160deg, var(--paper-50) 0%, var(--paper-200) 100%);
+  color: var(--ink);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 10px 24px -8px rgba(0, 0, 0, 0.5);
+}
+
+.inked {
+  border: 2.5px solid var(--ink);
+  border-radius: 14px 12px 16px 13px / 13px 16px 12px 15px;
+}
+
+.glow-marigold {
+  box-shadow:
+    0 0 0 3px var(--marigold),
+    0 0 24px -2px var(--marigold);
+}
+
+@keyframes invite-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px var(--marigold),
+      0 0 0 0 rgba(244, 160, 28, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px var(--marigold),
+      0 0 18px 4px rgba(244, 160, 28, 0.55);
+  }
+}
+
+.invite-pulse {
+  animation: invite-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .invite-pulse {
+    animation: none;
+    box-shadow:
+      0 0 0 3px var(--marigold),
+      0 0 16px 2px rgba(244, 160, 28, 0.45);
+  }
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-160px) scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes wobble {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+
+.animate-wobble {
+  animation: wobble 2.4s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.12) translateY(-4px);
+  }
+}
+
+.animate-bob {
+  animation: bob 2s ease-in-out infinite;
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    background-position: -150% 0;
+  }
+  100% {
+    background-position: 250% 0;
+  }
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(244, 160, 28, 0.35) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.6s linear infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

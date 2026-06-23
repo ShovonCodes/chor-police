@@ -23,6 +23,7 @@ export function Lobby({
   const me = view.players.find((p) => p.id === view.me);
   const isHost = !!me?.isHost;
   const count = view.players.length;
+  const hasBots = view.players.some((p) => p.isBot);
 
   const share = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
@@ -94,15 +95,19 @@ export function Lobby({
                       {p.name}
                       {p.id === view.me ? ' ·' : ''}
                     </p>
+                    {/* Host-only bot tag; non-hosts can't tell a bot from a human. */}
+                    {isHost && p.isBot && (
+                      <span className="text-[11px] font-700 text-paper-200/70">🤖 bot</span>
+                    )}
                   </div>
-                  {/* Host-only bot removal; non-hosts can't tell a bot from a human. */}
+                  {/* Host-only: clear, always-visible remove (no hover on mobile). */}
                   {isHost && p.isBot && (
                     <button
                       type="button"
                       onClick={() => startBotTransition(() => onRemoveBot(p.id))}
                       disabled={botPending}
-                      aria-label={`Remove ${p.name}`}
-                      className="shrink-0 rounded-full px-2 py-0.5 text-paper-200/60 transition-colors hover:bg-vermilion/20 hover:text-vermilion disabled:opacity-50"
+                      aria-label={`Remove bot ${p.name}`}
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-vermilion/50 bg-vermilion/15 font-700 text-vermilion transition-colors active:scale-90 disabled:opacity-50"
                     >
                       ✕
                     </button>
@@ -134,6 +139,12 @@ export function Lobby({
         {' · '}
         <span className="font-600 text-paper-50">{count}/4</span>
       </p>
+
+      {isHost && hasBots && (
+        <p className="-mt-3 text-center text-xs text-paper-200/70">
+          Tap ✕ on a 🤖 bot to free a seat for a friend.
+        </p>
+      )}
 
       {isHost ? (
         <Button

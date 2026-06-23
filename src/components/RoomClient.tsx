@@ -49,8 +49,15 @@ export function RoomClient({ code }: { code: string }) {
 }
 
 function RoomView({ code, playerId }: { code: string; playerId: string }) {
+  const router = useRouter();
   const room = useRoom(code, playerId);
   const { view, connected } = room;
+
+  const goHome = () => {
+    if (window.confirm('Leave this room and go back to the home page?')) {
+      router.push('/');
+    }
+  };
 
   if (!view) {
     return (
@@ -74,10 +81,15 @@ function RoomView({ code, playerId }: { code: string; playerId: string }) {
     <main className="relative flex h-[100dvh] flex-col overflow-hidden">
       <ReactionsOverlay reactions={room.reactions} />
       <header className="safe-px safe-pt flex items-center justify-between gap-2 py-3">
-        <span className="flex min-w-0 shrink items-center gap-2">
+        <button
+          type="button"
+          onClick={goHome}
+          aria-label="Leave room and go to the home page"
+          className="flex min-w-0 shrink items-center gap-2 transition active:scale-95"
+        >
           <Emblem size={40} className="shrink-0 drop-shadow-[0_2px_5px_rgba(0,0,0,0.35)]" />
           <Wordmark className="h-10 w-auto min-w-0 shrink" />
-        </span>
+        </button>
         <div className="flex shrink-0 items-center gap-2">
           <span className="rounded-full border-2 border-paper-50/30 bg-felt-800/70 px-3 py-1 font-display text-sm font-700 tracking-widest text-marigold">
             {view.code}

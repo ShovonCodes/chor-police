@@ -91,11 +91,12 @@ export function AnnounceGuess({
       ) : (
         <p
           className="flex items-center gap-2 text-center text-lg font-700 text-paper-200"
-          aria-label={`${policeName} is guessing`}
+          aria-label={`${policeName} is guessing the ${targetLabel.en}`}
         >
           <span aria-hidden>👮 🤔</span>
           <span>
-            <span className="text-paper-50">{policeName}</span> is guessing…
+            <span className="text-paper-50">{policeName}</span> is guessing the{' '}
+            <span className="text-marigold">{targetLabel.roman}</span>…
           </span>
         </p>
       )}

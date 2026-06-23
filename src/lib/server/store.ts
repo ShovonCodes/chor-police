@@ -375,7 +375,7 @@ export class MemoryGameStore implements GameStore {
           if (!e || e.room.match.phase !== 'drawing') return;
           void this.markDrawn(code, bot.id).then(({ allDrawn }) => {
             this.emitChange(code);
-            if (allDrawn) this.scheduleAnnounce(code, 2000);
+            if (allDrawn) this.scheduleAnnounce(code, 3500);
           });
         }, this.randDelay(BOT_DRAW_DELAY));
       }

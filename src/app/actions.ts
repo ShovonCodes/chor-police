@@ -158,8 +158,8 @@ export async function markSeen(
     const { allDrawn } = await gameStore.markDrawn(code, playerId);
     gameStore.emitChange(code);
     if (allDrawn) {
-      // 2s grace so the last player actually sees their card before the guess screen.
-      gameStore.scheduleAnnounce(code, 2000);
+      // Grace so the last player actually sees their card before the guess screen.
+      gameStore.scheduleAnnounce(code, 3500);
     }
     return view(code, playerId);
   } catch (err) {

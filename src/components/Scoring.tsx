@@ -121,6 +121,13 @@ export function Scoring({
   const deltas = view.round?.deltas ?? {};
   const maxDelta = Math.max(0, ...Object.values(deltas));
 
+  // After this round's scoring, would the next step end the match? (rounds played
+  // hit the target, or someone reached the target score.) If so, "Next" → podium.
+  const isLastRound =
+    view.mode === 'rounds'
+      ? (view.round?.roundNumber ?? 0) >= view.modeValue
+      : Math.max(0, ...Object.values(view.totals)) >= view.modeValue;
+
   useEffect(() => {
     const id = window.setTimeout(() => {
       setRun(true);
@@ -158,8 +165,12 @@ export function Scoring({
       </div>
 
       {isHost ? (
-        <Button onClick={onNext} className="w-full" aria-label="Next round">
-          ▶️ Next round
+        <Button
+          onClick={onNext}
+          className="w-full"
+          aria-label={isLastRound ? 'Show results' : 'Next round'}
+        >
+          {isLastRound ? '🏆 Show results' : '▶️ Next round'}
         </Button>
       ) : (
         <p className="text-paper-200" aria-label="Waiting for host">

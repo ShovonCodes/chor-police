@@ -109,6 +109,18 @@ export async function removeBot(
   }
 }
 
+export async function restartMatch(
+  code: string,
+  playerId: PlayerId,
+): Promise<Result<ClientView>> {
+  try {
+    await gameStore.restartMatch(code, playerId);
+    return view(code, playerId);
+  } catch (err) {
+    return toFailure(err);
+  }
+}
+
 export async function startMatch(
   code: string,
   playerId: PlayerId,

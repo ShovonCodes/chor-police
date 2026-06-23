@@ -154,7 +154,7 @@ function RoomView({ code, playerId }: { code: string; playerId: string }) {
             )}
 
             {view.phase === 'podium' && (
-              <Podium view={view} isHost={isHost} onPlayAgain={() => room.next()} />
+              <Podium view={view} isHost={isHost} onPlayAgain={() => room.restart()} />
             )}
           </motion.div>
         </AnimatePresence>

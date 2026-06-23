@@ -110,6 +110,8 @@ export interface GameStore {
 
   removeBot(code: string, hostId: PlayerId, botId: PlayerId): Promise<void>;
 
+  restartMatch(code: string, hostId: PlayerId): Promise<void>;
+
   advanceRoom(code: string, action: Action): Promise<Room>;
 
   addConnection(code: string, playerId: PlayerId): Promise<void>;
@@ -152,7 +154,7 @@ const AVATARS = ['🦁', '🦊', '🐯', '🦉', '🐼', '🐸', '🦅', '🐢']
 // Human-looking Bangladeshi names so a seated bot doesn't read as a bot.
 const BOT_NAMES = [
   'Shovon', 'Mithila', 'Iffat', 'Badhon', 'Awsaf', 'Meem', 'Ifat', 'Zeba',
-  'Akhi', 'Tasnia', 'Araf', 'Arish', 'Mitu', 'Jhilik', 'Litun'
+  'Akhi', 'Tasnia', 'Araf', 'Arish', 'Mitu', 'Jhilik', 'Litun', 'Tanzima'
 ];
 
 // Bot acts after a human-like delay so it doesn't fire instantly.
@@ -299,6 +301,27 @@ export class MemoryGameStore implements GameStore {
 
     room.players = room.players.filter((p) => p.id !== botId);
     this.notify(code);
+  }
+
+  // Play again: reset a finished match to the lobby with the same roster (scores
+  // cleared) so the group can start a fresh match. Host-only.
+  async restartMatch(code: string, hostId: PlayerId): Promise<void> {
+    const entry = this.requireEntry(code);
+    const { room } = entry;
+    const host = room.players.find((p) => p.id === hostId);
+    if (!host?.isHost) throw new StoreError('NOT_HOST', 'Only the host can restart.');
+    room.match = initMatch({
+      players: room.players.map((p) => p.id),
+      mode: room.match.mode,
+      modeValue: room.match.modeValue,
+    });
+    entry.drawn.clear();
+    entry.announceArmed = false;
+    entry.scoreArmed = false;
+    entry.botDrawScheduled.clear();
+    entry.botGuessArmed = false;
+    this.notify(code);
+    logEvent('match_restarted', { code, players: room.players.length });
   }
 
   async advanceRoom(code: string, action: Action): Promise<Room> {

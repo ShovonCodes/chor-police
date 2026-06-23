@@ -7,6 +7,7 @@ import {
   advancePhase as advancePhaseAction,
   markSeen as markSeenAction,
   removeBot as removeBotAction,
+  restartMatch as restartMatchAction,
   sendReaction as sendReactionAction,
   startMatch as startMatchAction,
   submitGuess as submitGuessAction,
@@ -58,6 +59,7 @@ export interface UseRoom {
   reveal: () => ReturnType<typeof advancePhaseAction>;
   score: () => ReturnType<typeof advancePhaseAction>;
   next: () => ReturnType<typeof advancePhaseAction>;
+  restart: () => ReturnType<typeof restartMatchAction>;
   sendReaction: (emoji: string) => ReturnType<typeof sendReactionAction>;
 }
 
@@ -184,6 +186,10 @@ export function useRoom(
     () => advancePhaseAction(code, idRef.current ?? '', 'next'),
     [code],
   );
+  const restart = useCallback(
+    () => restartMatchAction(code, idRef.current ?? ''),
+    [code],
+  );
   const sendReaction = useCallback(
     (emoji: string) => sendReactionAction(code, idRef.current ?? '', emoji),
     [code],
@@ -201,6 +207,7 @@ export function useRoom(
     reveal,
     score,
     next,
+    restart,
     sendReaction,
   };
 }

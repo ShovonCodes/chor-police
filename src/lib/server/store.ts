@@ -1,4 +1,9 @@
 import {
+  logEvent,
+  startMetricsHeartbeat,
+  type MetricsSnapshot,
+} from './metrics';
+import {
   advance,
   dealRoles,
   initMatch,
@@ -146,9 +151,8 @@ const AVATARS = ['🦁', '🦊', '🐯', '🦉', '🐼', '🐸', '🦅', '🐢']
 
 // Human-looking Bangladeshi names so a seated bot doesn't read as a bot.
 const BOT_NAMES = [
-  'Rafi', 'Tania', 'Nadia', 'Hasan', 'Mim', 'Arif', 'Sakib', 'Priya',
   'Shovon', 'Mithila', 'Iffat', 'Badhon', 'Awsaf', 'Meem', 'Ifat', 'Zeba',
-  'Akhi', 'Tasnia', 'Araf', 'Arish',
+  'Akhi', 'Tasnia', 'Araf', 'Arish', 'Mitu', 'Jhilik', 'Litun'
 ];
 
 // Bot acts after a human-like delay so it doesn't fire instantly.
@@ -219,6 +223,7 @@ export class MemoryGameStore implements GameStore {
       botDrawScheduled: new Set(),
       botGuessArmed: false,
     });
+    logEvent('room_created', { code, mode, value: modeValue });
     return { code, hostId };
   }
 
@@ -245,6 +250,7 @@ export class MemoryGameStore implements GameStore {
       isBot: false,
     });
     this.notify(code);
+    logEvent('player_joined', { code, players: room.players.length });
     return { code, playerId };
   }
 
@@ -275,6 +281,7 @@ export class MemoryGameStore implements GameStore {
       isBot: true,
     });
     this.notify(code);
+    logEvent('bot_added', { code, players: room.players.length });
   }
 
   async removeBot(code: string, hostId: PlayerId, botId: PlayerId): Promise<void> {
@@ -293,13 +300,32 @@ export class MemoryGameStore implements GameStore {
 
   async advanceRoom(code: string, action: Action): Promise<Room> {
     const entry = this.requireEntry(code);
+    const prevPhase = entry.room.match.phase;
     entry.room.match = advance(entry.room.match, action);
+    const match = entry.room.match;
     if (action.type === 'START_DEAL') {
       entry.drawn.clear();
       entry.announceArmed = false;
       entry.scoreArmed = false;
       entry.botDrawScheduled.clear();
       entry.botGuessArmed = false;
+      if (match.currentRound?.roundNumber === 1) {
+        const bots = entry.room.players.filter((p) => p.isBot).length;
+        logEvent('match_started', {
+          code,
+          players: entry.room.players.length,
+          bots,
+          mode: match.mode,
+          value: match.modeValue,
+        });
+      }
+    }
+    if (match.phase === 'podium' && prevPhase !== 'podium') {
+      const names = (match.winners ?? [])
+        .map((id) => entry.room.players.find((p) => p.id === id)?.name ?? id)
+        .join(',');
+      const top = Math.max(0, ...Object.values(match.totals));
+      logEvent('match_ended', { code, rounds: match.history.length, winners: names, top });
     }
     this.notify(code);
     this.scheduleBots(code);
@@ -557,6 +583,26 @@ export class MemoryGameStore implements GameStore {
     return room;
   }
 
+  // Aggregate snapshot for metrics logging.
+  stats(): MetricsSnapshot {
+    let players = 0;
+    let humans = 0;
+    let bots = 0;
+    let connected = 0;
+    const byPhase: Record<string, number> = {};
+    for (const { room } of this.rooms.values()) {
+      const phase = room.match.phase;
+      byPhase[phase] = (byPhase[phase] ?? 0) + 1;
+      for (const p of room.players) {
+        players += 1;
+        if (p.isBot) bots += 1;
+        else humans += 1;
+        if (p.connected) connected += 1;
+      }
+    }
+    return { rooms: this.rooms.size, players, humans, bots, connected, byPhase };
+  }
+
   private requireEntry(code: string): RoomEntry {
     const entry = this.rooms.get(code);
     if (!entry) throw new StoreError('ROOM_NOT_FOUND', 'Room not found.');
@@ -595,3 +641,6 @@ const globalForStore = globalThis as unknown as {
 export const gameStore: GameStore & MemoryGameStore =
   globalForStore.__chorPoliceStore ??
   (globalForStore.__chorPoliceStore = new MemoryGameStore());
+
+// Periodic metrics snapshot to stdout (Render logs). Once per process.
+startMetricsHeartbeat(() => gameStore.stats());

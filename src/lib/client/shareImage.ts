@@ -276,6 +276,26 @@ export type ShareMethod = 'share' | 'download';
 export interface ShareResult {
   method: ShareMethod;
   linkCopied: boolean;
+  // Only set when we had to download: why the native sheet wasn't used.
+  reason?: 'insecure' | 'unsupported';
+}
+
+async function copyLink(url: string): Promise<boolean> {
+  try {
+    await navigator.clipboard?.writeText(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function downloadBlob(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export async function shareResult(data: ShareData): Promise<ShareResult> {
@@ -284,18 +304,14 @@ export async function shareResult(data: ShareData): Promise<ShareResult> {
     type: 'image/png',
   });
 
-  let linkCopied = false;
-  try {
-    await navigator.clipboard?.writeText(data.origin);
-    linkCopied = true;
-  } catch {
-    // Clipboard may be blocked; not fatal.
-  }
-
   const nav = navigator as Navigator & {
     canShare?: (d: { files?: File[] }) => boolean;
   };
-  if (nav.canShare?.({ files: [file] })) {
+
+  // Native share first — the image IS the payload, so we only take this path
+  // when the platform can share files. Calling share() before any clipboard
+  // work preserves the user-activation iOS Safari requires.
+  if (typeof navigator.share === 'function' && nav.canShare?.({ files: [file] })) {
     try {
       await navigator.share({
         files: [file],
@@ -303,20 +319,23 @@ export async function shareResult(data: ShareData): Promise<ShareResult> {
         title: 'Chor Police',
         text: `Final standings — play at ${prettyUrl(data.origin)}`,
       });
+      const linkCopied = await copyLink(data.origin);
       return { method: 'share', linkCopied };
     } catch (err) {
-      // Cancel is not a failure; only fall back on genuine errors.
+      // User cancel is not a failure; only fall back on genuine errors.
       if ((err as Error)?.name === 'AbortError') {
-        return { method: 'share', linkCopied };
+        return { method: 'share', linkCopied: false };
       }
     }
   }
 
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = file.name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return { method: 'download', linkCopied };
+  // Fallback: secure context but no file-share support → unsupported; otherwise
+  // the page is served over plain HTTP, which disables Web Share entirely.
+  const linkCopied = await copyLink(data.origin);
+  downloadBlob(blob, file.name);
+  const reason: ShareResult['reason'] =
+    typeof window !== 'undefined' && !window.isSecureContext
+      ? 'insecure'
+      : 'unsupported';
+  return { method: 'download', linkCopied, reason };
 }

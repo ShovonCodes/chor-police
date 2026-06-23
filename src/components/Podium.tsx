@@ -51,13 +51,17 @@ export function Podium({
         origin: window.location.origin,
         rows,
       });
-      setToast(
-        res.linkCopied
-          ? 'Link copied 📋 — add it as a story link sticker so friends can tap through'
-          : res.method === 'download'
-            ? 'Image saved — share it to your story!'
-            : 'Shared! 🎉',
-      );
+      if (res.method === 'share') {
+        setToast('Shared! 📋 Link copied — add it as a story sticker so friends can tap through');
+      } else if (res.reason === 'insecure') {
+        setToast('Sharing needs HTTPS — saved the image instead. (Deploy or run dev over https to get the share sheet.)');
+      } else {
+        setToast(
+          res.linkCopied
+            ? 'Image saved 📋 + link copied — share it anywhere!'
+            : 'Image saved — share it anywhere!',
+        );
+      }
     } catch {
       setToast('Couldn’t make the image. Try again.');
     } finally {

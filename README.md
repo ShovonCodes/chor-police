@@ -109,7 +109,6 @@ src/
    ├─ server/           # 🗄️ authoritative in-memory store
    ├─ client/           # 🪝 realtime hook, sound, haptics
    └─ supabase/         # 🧩 deferred adapter (not wired)
-docs/superpowers/specs/ # 📐 design spec
 supabase/schema.sql     # 🗃️ deferred Postgres DDL
 ```
 

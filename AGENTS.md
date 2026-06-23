@@ -9,8 +9,6 @@ This version has breaking changes — APIs, conventions, and file structure may 
 Real-time 4-player web version of the Bangladeshi game *Chor Police* (Babu, Police,
 Dakat, Chor). Private rooms, no signup, playful and nostalgic.
 
-**Design spec:** [docs/superpowers/specs/2026-06-22-chor-police-web-design.md](docs/superpowers/specs/2026-06-22-chor-police-web-design.md) — read it before changing game rules or architecture.
-
 ## Stack (verified versions)
 
 - **Next.js 16.2.9** (App Router, `src/`, TS, alias `@/*`) — UI + authoritative server actions.
@@ -39,7 +37,7 @@ returns to each client ONLY that client's own role. The full map is released onl
 REVEAL phase. Realtime messages NEVER carry assignments — they carry "phase changed →
 refetch" events and presence. Sending all roles to the client before REVEAL = a cheat. Don't.
 
-## Game rules (canonical — see spec)
+## Game rules (canonical)
 
 - 4 players. Roles: **Babu** (1000, fixed, passive), **Police** (the catcher), **Dakat** (600), **Chor** (400).
 - Each round has a **target** the Police must catch: `chor` or `dakat`. First round's target is
@@ -61,7 +59,6 @@ refetch" events and presence. Sending all roles to the client before REVEAL = a 
 - `src/app/` — routes + server actions (authoritative mutations).
 - `src/components/` — UI + animations.
 - `src/lib/supabase/` — client/server Supabase wiring + realtime.
-- `docs/superpowers/specs/` — design docs.
 
 ## Commands
 

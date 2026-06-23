@@ -18,7 +18,7 @@ You own the data + multiplayer layer: `src/lib/supabase/` and the server actions
   phase or role sent by the client. Verify the actor is allowed to take the action (e.g. only
   the Mantri submits a guess; only the host starts/advances).
 
-## Schema (see spec for full columns)
+## Schema (see supabase/schema.sql for full columns)
 
 `rooms`, `players`, `rounds` (holds secret `assignments`, `mantri_guess`, `guess_correct`),
 `reactions` (ephemeral). Codes are 4-char unique. Persist enough to restore a player's view on

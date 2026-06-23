@@ -182,6 +182,8 @@ interface RoomEntry {
   // Bot timers, reset each round alongside drawn/announceArmed/scoreArmed.
   botDrawScheduled: Set<PlayerId>;
   botGuessArmed: boolean;
+  // Last mutation/connection time (ms) — drives idle eviction.
+  lastActivity: number;
 }
 
 export class MemoryGameStore implements GameStore {
@@ -222,6 +224,7 @@ export class MemoryGameStore implements GameStore {
       scoreArmed: false,
       botDrawScheduled: new Set(),
       botGuessArmed: false,
+      lastActivity: Date.now(),
     });
     logEvent('room_created', { code, mode, value: modeValue });
     return { code, hostId };
@@ -437,6 +440,7 @@ export class MemoryGameStore implements GameStore {
   async addConnection(code: string, playerId: PlayerId): Promise<void> {
     const entry = this.rooms.get(code);
     if (!entry) return;
+    entry.lastActivity = Date.now();
     const next = (entry.conns.get(playerId) ?? 0) + 1;
     entry.conns.set(playerId, next);
     if (next === 1) this.setConnected(entry, playerId, true);
@@ -445,6 +449,7 @@ export class MemoryGameStore implements GameStore {
   async removeConnection(code: string, playerId: PlayerId): Promise<void> {
     const entry = this.rooms.get(code);
     if (!entry) return;
+    entry.lastActivity = Date.now();
     const next = (entry.conns.get(playerId) ?? 0) - 1;
     if (next <= 0) {
       entry.conns.delete(playerId);
@@ -592,6 +597,36 @@ export class MemoryGameStore implements GameStore {
     return room;
   }
 
+  // Drop rooms that have no live connections and have been idle past the TTL.
+  // A room with ≥1 open SSE stream (conns) is never evicted, so players sitting
+  // on the podium / mid-game are safe; abandoned rooms are reclaimed.
+  evictStaleRooms(): void {
+    const ttl = Number(process.env.CP_ROOM_TTL_MS ?? 1_800_000); // 30 min
+    if (!(ttl > 0)) return;
+    const now = Date.now();
+    for (const [code, entry] of this.rooms) {
+      if (entry.conns.size > 0) continue;
+      const idle = now - entry.lastActivity;
+      if (idle <= ttl) continue;
+      this.rooms.delete(code);
+      logEvent('room_evicted', { code, idle_min: Math.round(idle / 60_000) });
+    }
+  }
+
+  // Periodic idle-room sweep. Single-process only; once per process.
+  startRoomSweeper(): void {
+    const g = globalThis as unknown as {
+      __cpSweeper?: ReturnType<typeof setInterval>;
+    };
+    if (g.__cpSweeper) return;
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) return;
+    const every = Number(process.env.CP_SWEEP_INTERVAL_MS ?? 300_000); // 5 min
+    if (!(every > 0)) return;
+    const timer = setInterval(() => this.evictStaleRooms(), every);
+    (timer as { unref?: () => void }).unref?.();
+    g.__cpSweeper = timer;
+  }
+
   // Aggregate snapshot for metrics logging.
   stats(): MetricsSnapshot {
     let players = 0;
@@ -621,6 +656,7 @@ export class MemoryGameStore implements GameStore {
   private notify(code: string): void {
     const entry = this.rooms.get(code);
     if (!entry) return;
+    entry.lastActivity = Date.now();
     for (const listener of entry.listeners) {
       try {
         listener();
@@ -653,3 +689,5 @@ export const gameStore: GameStore & MemoryGameStore =
 
 // Periodic metrics snapshot to stdout (Render logs). Once per process.
 startMetricsHeartbeat(() => gameStore.stats());
+// Reclaim abandoned rooms so memory doesn't grow unbounded.
+gameStore.startRoomSweeper();

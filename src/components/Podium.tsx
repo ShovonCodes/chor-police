@@ -10,7 +10,76 @@ import { play } from '@/lib/client/sound';
 import { vibrate } from '@/lib/client/haptics';
 import { shareResult, type ShareRow } from '@/lib/client/shareImage';
 
-const MEDALS = ['🥇', '🥈', '🥉', '🎖️'];
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+// place: 1 = gold/center, 2 = silver/left, 3 = bronze/right.
+const METAL = {
+  1: { from: '#f6c544', to: '#d97e0a', ring: '#b8650a' },
+  2: { from: '#e6eaee', to: '#a9b2ba', ring: '#8c959d' },
+  3: { from: '#e0a473', to: '#b87333', ring: '#8f561f' },
+} as const;
+
+const BLOCK_H = { 1: 132, 2: 96, 3: 72 } as const;
+
+function PodiumSpot({
+  name,
+  emoji,
+  seat,
+  score,
+  place,
+  isMe,
+  isWinner,
+  reduce,
+}: {
+  name: string;
+  emoji: string;
+  seat: number;
+  score: number;
+  place: 1 | 2 | 3;
+  isMe: boolean;
+  isWinner: boolean;
+  reduce: boolean | null;
+}) {
+  const metal = METAL[place];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 130, damping: 14, delay: 0.08 * (3 - place) }}
+      className="flex w-full flex-col items-center justify-end gap-1"
+    >
+      {place === 1 && (
+        <motion.span
+          className="text-3xl"
+          aria-label="champion"
+          animate={reduce ? undefined : { y: [0, -5, 0], rotate: [0, -5, 5, 0] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          👑
+        </motion.span>
+      )}
+      <Avatar emoji={emoji} seat={seat} size={place === 1 ? 72 : 56} />
+      <p className="max-w-full truncate text-center font-display text-sm font-800 text-paper-50">
+        {name}
+        {isMe && <span className="text-paper-200"> ·</span>}
+      </p>
+      <p className="font-display text-base font-800 tabular-nums text-gold">{score}</p>
+      <div
+        className={[
+          'mt-1 flex w-full items-start justify-center rounded-t-2xl border-2 border-b-0 pt-2',
+          isWinner ? 'glow-marigold' : '',
+        ].join(' ')}
+        style={{
+          height: BLOCK_H[place],
+          background: `linear-gradient(180deg, ${metal.from}, ${metal.to})`,
+          borderColor: metal.ring,
+        }}
+      >
+        <span className="font-display text-2xl font-800">{MEDALS[place - 1]}</span>
+      </div>
+    </motion.div>
+  );
+}
 
 export function Podium({
   view,
@@ -28,7 +97,10 @@ export function Podium({
     (a, b) => (view.totals[b.id] ?? 0) - (view.totals[a.id] ?? 0),
   );
   const meWon = winners.includes(view.me);
-  const champion = ranked[0];
+
+  const score = (id: string) => view.totals[id] ?? 0;
+  const seatOf = (id: string) => view.players.findIndex((p) => p.id === id);
+  const [first, second, third, fourth] = ranked;
 
   const [sharing, setSharing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -36,8 +108,8 @@ export function Podium({
   const rows: ShareRow[] = ranked.map((p, i) => ({
     name: p.name,
     emoji: p.avatar,
-    seat: view.players.indexOf(p),
-    score: view.totals[p.id] ?? 0,
+    seat: seatOf(p.id),
+    score: score(p.id),
     rank: i,
     isWinner: winners.includes(p.id),
   }));
@@ -89,66 +161,69 @@ export function Podium({
 
   return (
     <div className="safe-px mx-auto flex w-full max-w-md flex-col items-center gap-5 py-8">
-      {champion && (
-        <motion.div
-          initial={{ scale: 0.7, y: 20, opacity: 0 }}
-          animate={{ scale: 1, y: 0, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 120, damping: 12 }}
-          className="paper inked glow-marigold relative flex w-full max-w-[20rem] flex-col items-center gap-1 px-6 py-6 text-center"
-        >
-          <motion.span
-            className="text-5xl"
-            aria-label="champion"
-            animate={reduce ? undefined : { y: [0, -6, 0], rotate: [0, -4, 4, 0] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            👑
-          </motion.span>
-          <Avatar
-            emoji={champion.avatar}
-            seat={view.players.indexOf(champion)}
-            size={96}
+      <p className="font-display text-xl font-800 text-paper-50">🏆 Final standings</p>
+
+      {/* Olympic podium: 2nd · 1st · 3rd, stepped. */}
+      <div className="grid w-full grid-cols-3 items-end gap-2">
+        {second && (
+          <PodiumSpot
+            name={second.name}
+            emoji={second.avatar}
+            seat={seatOf(second.id)}
+            score={score(second.id)}
+            place={2}
+            isMe={second.id === view.me}
+            isWinner={winners.includes(second.id)}
+            reduce={reduce}
           />
-          <span className="mt-1 rounded-full bg-marigold px-3 py-0.5 font-display text-xs font-800 tracking-widest text-ink">
-            CHAMPION
+        )}
+        {first && (
+          <PodiumSpot
+            name={first.name}
+            emoji={first.avatar}
+            seat={seatOf(first.id)}
+            score={score(first.id)}
+            place={1}
+            isMe={first.id === view.me}
+            isWinner={winners.includes(first.id)}
+            reduce={reduce}
+          />
+        )}
+        {third && (
+          <PodiumSpot
+            name={third.name}
+            emoji={third.avatar}
+            seat={seatOf(third.id)}
+            score={score(third.id)}
+            place={3}
+            isMe={third.id === view.me}
+            isWinner={winners.includes(third.id)}
+            reduce={reduce}
+          />
+        )}
+      </div>
+
+      {/* Fourth place only. */}
+      {fourth && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="flex w-full items-center gap-3 rounded-2xl border-2 border-paper-50/20 bg-felt-800/70 px-3 py-2.5"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center font-display text-sm font-800 text-paper-200">
+            4
           </span>
-          <p className="font-display text-3xl font-800 text-vermilion-dark">
-            {champion.name}
+          <Avatar emoji={fourth.avatar} seat={seatOf(fourth.id)} size={40} />
+          <p className="min-w-0 flex-1 truncate font-600 text-paper-50">
+            {fourth.name}
+            {fourth.id === view.me && <span className="text-paper-200"> ·</span>}
           </p>
-          <p className="font-display text-2xl font-800 text-marigold-dark tabular-nums">
-            {view.totals[champion.id] ?? 0}
-          </p>
+          <span className="font-display text-lg font-800 tabular-nums text-gold">
+            {score(fourth.id)}
+          </span>
         </motion.div>
       )}
-
-      <div className="flex w-full flex-col gap-2">
-        {ranked.map((p, i) => (
-          <motion.div
-            key={p.id}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.08 * i }}
-            className={[
-              'flex items-center gap-3 rounded-2xl border-2 px-3 py-2.5',
-              winners.includes(p.id)
-                ? 'border-marigold bg-felt-700/90 glow-marigold'
-                : 'border-paper-50/20 bg-felt-800/70',
-            ].join(' ')}
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center text-xl">
-              {MEDALS[i] ?? <span className="font-display font-800 text-paper-200">{i + 1}</span>}
-            </span>
-            <Avatar emoji={p.avatar} seat={view.players.indexOf(p)} size={44} />
-            <p className="min-w-0 flex-1 truncate font-600 text-paper-50">
-              {p.name}
-              {p.id === view.me && <span className="text-paper-200"> ·</span>}
-            </p>
-            <span className="font-display text-lg font-800 tabular-nums text-gold">
-              {view.totals[p.id] ?? 0}
-            </span>
-          </motion.div>
-        ))}
-      </div>
 
       <div className="flex w-full flex-col gap-2">
         <Button

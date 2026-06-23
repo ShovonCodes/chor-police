@@ -519,11 +519,20 @@ export class MemoryGameStore implements GameStore {
     const assignments: Record<PlayerId, Role> | null =
       revealed && round ? { ...round.assignments } : null;
 
+    // Babu/Police become public at the guess. We also surface them during the
+    // all-drawn grace ("prepare to guess") so spectators can see who's about to
+    // guess — they're public a beat later anyway. Chor/Dakat stay hidden until reveal.
+    const allDrawn =
+      room.players.length > 0 && room.players.every((p) => entry.drawn.has(p.id));
     let publicRoles: Record<PlayerId, Role> = {};
     if (round) {
       if (revealed) {
         publicRoles = { ...round.assignments };
-      } else if (match.phase === 'announce' || match.phase === 'guessing') {
+      } else if (
+        match.phase === 'announce' ||
+        match.phase === 'guessing' ||
+        (match.phase === 'drawing' && allDrawn)
+      ) {
         for (const [pid, role] of Object.entries(round.assignments)) {
           if (role === 'babu' || role === 'police') publicRoles[pid] = role;
         }

@@ -111,15 +111,8 @@ export function Chit({
         {hidden ? '👀' : '🤫'}
       </Button>
 
-      {view.seenCount >= 4 ? (
-        <motion.p
-          className="font-display text-lg font-700 text-marigold"
-          animate={reduce ? undefined : { scale: [1, 1.06, 1] }}
-          transition={{ duration: 0.9, repeat: Infinity }}
-          aria-label="Prepare to guess"
-        >
-          🥁 Prepare to guess…
-        </motion.p>
+      {view.seenCount >= view.players.length ? (
+        <PrepareToGuess view={view} reduce={reduce} />
       ) : (
         <div
           className="flex items-center gap-1.5"
@@ -137,6 +130,52 @@ export function Chit({
         </div>
       )}
     </div>
+  );
+}
+
+// All-drawn grace: the Police sees the prepare cue; everyone else sees who is
+// about to guess and which outlaw they're hunting this round.
+function PrepareToGuess({
+  view,
+  reduce,
+}: {
+  view: ClientView;
+  reduce: boolean | null;
+}) {
+  const amPolice = view.myRole === 'police';
+  const targetRoman = view.round ? ROLE_LABELS[view.round.target].roman : '';
+
+  if (amPolice) {
+    return (
+      <motion.p
+        className="text-center font-display text-lg font-800 text-marigold"
+        animate={reduce ? undefined : { scale: [1, 1.06, 1] }}
+        transition={{ duration: 0.9, repeat: Infinity }}
+        aria-label="Prepare to guess"
+      >
+        🥁 Prepare to guess…
+      </motion.p>
+    );
+  }
+
+  const policeId = Object.entries(view.publicRoles).find(
+    ([, r]) => r === 'police',
+  )?.[0];
+  const policeName = view.players.find((p) => p.id === policeId)?.name ?? 'The Police';
+
+  return (
+    <motion.p
+      className="flex items-center justify-center gap-2 text-center text-base font-700 text-paper-200"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      aria-label={`${policeName}, the Police, will guess the ${targetRoman}`}
+    >
+      <span aria-hidden>👮 🤔</span>
+      <span>
+        <span className="text-paper-50">{policeName}</span> (Police) will guess the{' '}
+        <span className="text-marigold">{targetRoman}</span>…
+      </span>
+    </motion.p>
   );
 }
 

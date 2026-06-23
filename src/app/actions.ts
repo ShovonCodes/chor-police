@@ -37,7 +37,9 @@ function toFailure(err: unknown): Result<never> {
           ? 'ROOM_FULL'
           : err.code === 'ROOM_IN_PROGRESS'
             ? 'ROOM_IN_PROGRESS'
-            : 'ILLEGAL_MOVE';
+            : err.code === 'NOT_HOST'
+              ? 'NOT_HOST'
+              : 'ILLEGAL_MOVE';
     return fail(known, err.message);
   }
   const message = err instanceof Error ? err.message : 'Illegal move.';
@@ -77,6 +79,31 @@ export async function joinRoom(
     const view = await gameStore.viewFor(code.toUpperCase(), playerId);
     if (!view) return fail('ROOM_NOT_FOUND', 'Room not found.');
     return { ok: true, value: { code: code.toUpperCase(), playerId, view } };
+  } catch (err) {
+    return toFailure(err);
+  }
+}
+
+export async function addBot(
+  code: string,
+  playerId: PlayerId,
+): Promise<Result<ClientView>> {
+  try {
+    await gameStore.addBot(code, playerId);
+    return view(code, playerId);
+  } catch (err) {
+    return toFailure(err);
+  }
+}
+
+export async function removeBot(
+  code: string,
+  playerId: PlayerId,
+  botId: PlayerId,
+): Promise<Result<ClientView>> {
+  try {
+    await gameStore.removeBot(code, playerId, botId);
+    return view(code, playerId);
   } catch (err) {
     return toFailure(err);
   }

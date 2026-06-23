@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ClientView, ReactionEvent } from '@/lib/server/store';
 import {
+  addBot as addBotAction,
   advancePhase as advancePhaseAction,
   markSeen as markSeenAction,
+  removeBot as removeBotAction,
   sendReaction as sendReactionAction,
   startMatch as startMatchAction,
   submitGuess as submitGuessAction,
@@ -48,6 +50,8 @@ export interface UseRoom {
   view: ClientView | null;
   connected: boolean;
   reactions: ActiveReaction[];
+  addBot: () => ReturnType<typeof addBotAction>;
+  removeBot: (botId: string) => ReturnType<typeof removeBotAction>;
   startMatch: () => ReturnType<typeof startMatchAction>;
   markSeen: () => ReturnType<typeof markSeenAction>;
   submitGuess: (targetId: string) => ReturnType<typeof submitGuessAction>;
@@ -148,6 +152,14 @@ export function useRoom(
     };
   }, [code, resolvedId]);
 
+  const addBot = useCallback(
+    () => addBotAction(code, idRef.current ?? ''),
+    [code],
+  );
+  const removeBot = useCallback(
+    (botId: string) => removeBotAction(code, idRef.current ?? '', botId),
+    [code],
+  );
   const startMatch = useCallback(
     () => startMatchAction(code, idRef.current ?? ''),
     [code],
@@ -181,6 +193,8 @@ export function useRoom(
     view,
     connected,
     reactions,
+    addBot,
+    removeBot,
     startMatch,
     markSeen,
     submitGuess,

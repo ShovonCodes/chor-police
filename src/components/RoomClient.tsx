@@ -109,7 +109,12 @@ function RoomView({ code, playerId }: { code: string; playerId: string }) {
             className="flex flex-1 flex-col"
           >
             {view.phase === 'lobby' && (
-              <Lobby view={view} onStart={() => room.startMatch()} />
+              <Lobby
+                view={view}
+                onStart={() => room.startMatch()}
+                onAddBot={() => room.addBot()}
+                onRemoveBot={(botId) => room.removeBot(botId)}
+              />
             )}
 
             {(view.phase === 'dealing' || view.phase === 'drawing') && (

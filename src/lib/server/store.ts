@@ -17,6 +17,7 @@ export interface Player {
   avatar: string;
   connected: boolean;
   isHost: boolean;
+  isBot: boolean;
 }
 
 const REVEALED_PHASES: ReadonlySet<Phase> = new Set<Phase>([
@@ -35,6 +36,7 @@ export interface ClientViewPlayer {
   avatar: string;
   connected: boolean;
   isHost: boolean;
+  isBot: boolean;
 }
 
 export interface ClientView {
@@ -99,6 +101,10 @@ export interface GameStore {
 
   joinRoom(code: string, name: string): Promise<JoinRoomResult>;
 
+  addBot(code: string, hostId: PlayerId): Promise<void>;
+
+  removeBot(code: string, hostId: PlayerId, botId: PlayerId): Promise<void>;
+
   advanceRoom(code: string, action: Action): Promise<Room>;
 
   addConnection(code: string, playerId: PlayerId): Promise<void>;
@@ -138,6 +144,13 @@ function generateCode(rng: () => number): string {
 
 const AVATARS = ['🦁', '🦊', '🐯', '🦉', '🐼', '🐸', '🦅', '🐢'];
 
+// Human-looking names so a seated bot doesn't read as a bot.
+const BOT_NAMES = ['Rafi', 'Tania', 'Nadia', 'Hasan', 'Mim', 'Arif', 'Sakib', 'Priya'];
+
+// Bot acts after a human-like delay so it doesn't fire instantly.
+const BOT_DRAW_DELAY = { min: 1500, max: 3500 };
+const BOT_GUESS_DELAY = { min: 2000, max: 5000 };
+
 let idCounter = 0;
 function newId(prefix: string): string {
   idCounter += 1;
@@ -158,6 +171,9 @@ interface RoomEntry {
   drawn: Set<PlayerId>;
   announceArmed: boolean;
   scoreArmed: boolean;
+  // Bot timers, reset each round alongside drawn/announceArmed/scoreArmed.
+  botDrawScheduled: Set<PlayerId>;
+  botGuessArmed: boolean;
 }
 
 export class MemoryGameStore implements GameStore {
@@ -183,6 +199,7 @@ export class MemoryGameStore implements GameStore {
       avatar: AVATARS[0],
       connected: true,
       isHost: true,
+      isBot: false,
     };
 
     const match = initMatch({ players: [hostId], mode, modeValue });
@@ -195,6 +212,8 @@ export class MemoryGameStore implements GameStore {
       drawn: new Set(),
       announceArmed: false,
       scoreArmed: false,
+      botDrawScheduled: new Set(),
+      botGuessArmed: false,
     });
     return { code, hostId };
   }
@@ -219,9 +238,50 @@ export class MemoryGameStore implements GameStore {
       avatar: AVATARS[room.players.length % AVATARS.length],
       connected: true,
       isHost: false,
+      isBot: false,
     });
     this.notify(code);
     return { code, playerId };
+  }
+
+  // Host fills an empty lobby seat with a bot. Bots are always `connected` (they
+  // have no SSE stream, so the presence ref-counter never touches them) which keeps
+  // `canStart` satisfiable with fewer than 4 humans.
+  async addBot(code: string, hostId: PlayerId): Promise<void> {
+    const entry = this.requireEntry(code);
+    const { room } = entry;
+    const host = room.players.find((p) => p.id === hostId);
+    if (!host?.isHost) throw new StoreError('NOT_HOST', 'Only the host can add bots.');
+    if (room.match.phase !== 'lobby')
+      throw new StoreError('ROOM_IN_PROGRESS', 'Match already started.');
+    if (room.players.length >= 4)
+      throw new StoreError('ROOM_FULL', 'Room already has 4 players.');
+
+    const used = new Set(room.players.map((p) => p.name));
+    const name = BOT_NAMES.find((n) => !used.has(n)) ?? `Bot ${room.players.length}`;
+    room.players.push({
+      id: newId('b'),
+      name,
+      avatar: AVATARS[room.players.length % AVATARS.length],
+      connected: true,
+      isHost: false,
+      isBot: true,
+    });
+    this.notify(code);
+  }
+
+  async removeBot(code: string, hostId: PlayerId, botId: PlayerId): Promise<void> {
+    const entry = this.requireEntry(code);
+    const { room } = entry;
+    const host = room.players.find((p) => p.id === hostId);
+    if (!host?.isHost) throw new StoreError('NOT_HOST', 'Only the host can remove bots.');
+    if (room.match.phase !== 'lobby')
+      throw new StoreError('ROOM_IN_PROGRESS', 'Match already started.');
+    const target = room.players.find((p) => p.id === botId);
+    if (!target?.isBot) throw new StoreError('ILLEGAL_MOVE', 'Not a bot seat.');
+
+    room.players = room.players.filter((p) => p.id !== botId);
+    this.notify(code);
   }
 
   async advanceRoom(code: string, action: Action): Promise<Room> {
@@ -231,8 +291,11 @@ export class MemoryGameStore implements GameStore {
       entry.drawn.clear();
       entry.announceArmed = false;
       entry.scoreArmed = false;
+      entry.botDrawScheduled.clear();
+      entry.botGuessArmed = false;
     }
     this.notify(code);
+    this.scheduleBots(code);
     return entry.room;
   }
 
@@ -278,6 +341,62 @@ export class MemoryGameStore implements GameStore {
         void this.advanceRoom(code, { type: 'SCORE' });
       }
     }, delayMs);
+  }
+
+  private randDelay(band: { min: number; max: number }): number {
+    return band.min + Math.floor(this.rng() * (band.max - band.min));
+  }
+
+  // Drives bots entirely server-side. In `drawing` each bot "looks" at its chit
+  // after a human-like delay; in `announce` a bot Police guesses blindly (50/50)
+  // after a delay. Idempotent via per-round armed flags plus a phase re-check
+  // inside each timer — the same shape as scheduleAnnounce/scheduleScore. Called
+  // at the end of advanceRoom, so it reacts to every phase transition.
+  private scheduleBots(code: string): void {
+    const entry = this.rooms.get(code);
+    if (!entry) return;
+    const { room } = entry;
+    const { phase, currentRound: round } = room.match;
+
+    if (phase === 'drawing') {
+      for (const bot of room.players) {
+        if (!bot.isBot) continue;
+        if (entry.drawn.has(bot.id) || entry.botDrawScheduled.has(bot.id)) continue;
+        entry.botDrawScheduled.add(bot.id);
+        setTimeout(() => {
+          const e = this.rooms.get(code);
+          if (!e || e.room.match.phase !== 'drawing') return;
+          void this.markDrawn(code, bot.id).then(({ allDrawn }) => {
+            this.emitChange(code);
+            if (allDrawn) this.scheduleAnnounce(code, 2000);
+          });
+        }, this.randDelay(BOT_DRAW_DELAY));
+      }
+      return;
+    }
+
+    if (phase === 'announce' && round && !entry.botGuessArmed) {
+      const policeId = Object.entries(round.assignments).find(
+        ([, role]) => role === 'police',
+      )?.[0];
+      const police = policeId && room.players.find((p) => p.id === policeId);
+      if (!police || !police.isBot) return;
+      entry.botGuessArmed = true;
+      setTimeout(() => {
+        const e = this.rooms.get(code);
+        const r = e?.room.match.currentRound;
+        if (!e || e.room.match.phase !== 'announce' || !r || r.policeGuess) return;
+        // Blind 50/50: pick uniformly among the two hidden outlaws (chor/dakat).
+        // The bot never consults which one is the round's target.
+        const suspects = Object.entries(r.assignments)
+          .filter(([, role]) => role === 'chor' || role === 'dakat')
+          .map(([id]) => id);
+        const pick = suspects[Math.floor(this.rng() * suspects.length)];
+        void this.advanceRoom(code, { type: 'GUESS', policeGuess: pick })
+          .then(() => this.advanceRoom(code, { type: 'REVEAL' }))
+          .then(() => this.scheduleScore(code, 6000));
+      }, this.randDelay(BOT_GUESS_DELAY));
+    }
   }
 
   // Presence is ref-counted: a player is connected while ≥1 live stream exists.
@@ -389,6 +508,7 @@ export class MemoryGameStore implements GameStore {
         avatar: p.avatar,
         connected: p.connected,
         isHost: p.isHost,
+        isBot: p.isBot,
       })),
       me: playerId,
       myRole,

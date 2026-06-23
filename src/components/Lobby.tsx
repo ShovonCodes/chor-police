@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { motion } from 'motion/react';
 import type { ClientView } from '@/lib/server/store';
 import { Avatar } from './characters/Avatar';
@@ -10,11 +10,16 @@ import { Seal } from './brand/Seal';
 export function Lobby({
   view,
   onStart,
+  onAddBot,
+  onRemoveBot,
 }: {
   view: ClientView;
   onStart: () => void;
+  onAddBot: () => void;
+  onRemoveBot: (botId: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [botPending, startBotTransition] = useTransition();
   const me = view.players.find((p) => p.id === view.me);
   const isHost = !!me?.isHost;
   const count = view.players.length;
@@ -83,14 +88,36 @@ export function Lobby({
                       title={p.connected ? 'online' : 'offline'}
                     />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate font-600 text-paper-50">
                       {p.isHost && <span aria-label="host">👑 </span>}
                       {p.name}
                       {p.id === view.me ? ' ·' : ''}
                     </p>
                   </div>
+                  {/* Host-only bot removal; non-hosts can't tell a bot from a human. */}
+                  {isHost && p.isBot && (
+                    <button
+                      type="button"
+                      onClick={() => startBotTransition(() => onRemoveBot(p.id))}
+                      disabled={botPending}
+                      aria-label={`Remove ${p.name}`}
+                      className="shrink-0 rounded-full px-2 py-0.5 text-paper-200/60 transition-colors hover:bg-vermilion/20 hover:text-vermilion disabled:opacity-50"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </>
+              ) : isHost ? (
+                <button
+                  type="button"
+                  onClick={() => startBotTransition(onAddBot)}
+                  disabled={botPending}
+                  aria-label="Add a bot to this seat"
+                  className="flex w-full items-center justify-center gap-1.5 text-sm font-600 text-paper-200/70 transition-colors hover:text-marigold disabled:opacity-50"
+                >
+                  <span aria-hidden className="text-xl">🤖</span> Add bot
+                </button>
               ) : (
                 <span className="text-2xl text-paper-200/40" aria-label="empty seat">
                   ➕

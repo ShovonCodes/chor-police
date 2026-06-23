@@ -7,6 +7,7 @@ import type { ClientView } from '@/lib/server/store';
 import type { Role } from '@/lib/game';
 import { RoleCard, type CardHighlight } from './RoleCard';
 import { CharacterByRole, ROLE_COLOR, ROLE_LABELS } from './characters';
+import { Avatar } from './characters/Avatar';
 import { Button } from './ui/Button';
 import { play } from '@/lib/client/sound';
 import { vibrate } from '@/lib/client/haptics';
@@ -55,6 +56,37 @@ function fireEscape() {
     if (Date.now() < end) setTimeout(rain, 120);
   };
   rain();
+}
+
+// Drawn tick / cross on a colored disc — replaces the raw ✅/❌ emoji.
+function VerdictMark({ ok, size = 26 }: { ok: boolean; size?: number }) {
+  return (
+    <span
+      className="grid place-items-center rounded-full border-2 border-felt-900 shadow"
+      style={{ width: size, height: size, background: ok ? '#128f88' : '#e2483a' }}
+      aria-hidden
+    >
+      <svg
+        width={size * 0.6}
+        height={size * 0.6}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#fff"
+        strokeWidth={3.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {ok ? (
+          <path d="M5 13l4 4L19 7" />
+        ) : (
+          <>
+            <path d="M6 6l12 12" />
+            <path d="M18 6L6 18" />
+          </>
+        )}
+      </svg>
+    </span>
+  );
 }
 
 export function Reveal({
@@ -129,48 +161,116 @@ export function Reveal({
     : null;
   const targetName = nameOf(actualTargetId);
   const targetRoman = ROLE_LABELS[target].roman;
-  const accusedRoman = accusedRole ? ROLE_LABELS[accusedRole].roman : '?';
+
+  const policeId = assignments
+    ? (Object.entries(assignments).find(([, r]) => r === 'police')?.[0] ?? null)
+    : null;
+  const seatOf = (id: string | null) =>
+    id ? Math.max(0, view.players.findIndex((p) => p.id === id)) : 0;
+  const avatarOf = (id: string | null) =>
+    view.players.find((p) => p.id === id)?.avatar ?? '❓';
 
   return (
     <motion.div
       animate={shake}
       className="safe-px mx-auto flex w-full max-w-md flex-col items-center gap-3 py-3"
     >
-      {/* Emoji verdict — no sentences. */}
+      {/* Verdict banner — Police character + drawn tick/cross. */}
       <motion.div
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.9, type: 'spring', stiffness: 160, damping: 12 }}
-        className="text-center"
+        className={[
+          'flex items-center gap-3 rounded-[20px] border-2 px-5 py-2.5',
+          caught ? 'border-teal bg-teal/15' : 'border-vermilion bg-vermilion/15',
+        ].join(' ')}
+        aria-label={caught ? 'The Police caught the target' : 'The target escaped'}
       >
-        <div className="text-4xl" aria-hidden>
-          {caught ? '👮‍♂️✅' : '😈💨'}
+        <div className="relative">
+          <CharacterByRole role="police" size={52} title="Police" />
+          <span className="absolute -bottom-1 -right-1">
+            <VerdictMark ok={caught === true} size={26} />
+          </span>
         </div>
-        <p className="font-display text-xl font-800 text-paper-50">
+        <p
+          className={[
+            'font-display text-3xl font-800',
+            caught ? 'text-teal' : 'text-vermilion',
+          ].join(' ')}
+        >
           {caught ? 'Caught!' : 'Escaped!'}
         </p>
       </motion.div>
 
-      {/* Plain-language recap so everyone knows what happened. */}
+      {/* Recap card — Police → accused, with revealed roles. */}
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.1 }}
-        className="paper inked w-full px-4 py-2 text-center text-[13px] leading-snug text-ink"
+        className="paper inked w-full px-4 py-3"
       >
-        <p>
-          👮 <span className="font-700">{policeName}</span> accused{' '}
-          <span className="font-700">{accusedName}</span>
-        </p>
-        <p className="text-ink-soft">
-          {accusedName} was the{' '}
-          <span className="font-700 text-vermilion-dark">{accusedRoman}</span>
-        </p>
-        <p className="mt-1 font-display font-800">
-          {caught
-            ? `✅ Caught the ${targetRoman}!`
-            : `❌ The ${targetRoman} (${targetName}) got away!`}
-        </p>
+        <div className="flex items-center justify-center gap-2">
+          <div className="flex w-[92px] flex-col items-center gap-1">
+            <Avatar emoji={avatarOf(policeId)} seat={seatOf(policeId)} size={44} />
+            <span className="max-w-full truncate text-xs font-700 text-ink">
+              {policeName}
+            </span>
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-700 text-ink"
+              style={{ background: ROLE_COLOR.police }}
+            >
+              {ROLE_LABELS.police.roman}
+            </span>
+          </div>
+
+          <div className="flex flex-col items-center gap-0.5 text-ink-soft">
+            <span className="text-[10px] font-800 uppercase tracking-wider">
+              accused
+            </span>
+            <motion.span
+              className="text-2xl text-vermilion-dark"
+              aria-hidden
+              animate={{ x: [0, 4, 0] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            >
+              →
+            </motion.span>
+          </div>
+
+          <div className="flex w-[92px] flex-col items-center gap-1">
+            <Avatar emoji={avatarOf(accusedId)} seat={seatOf(accusedId)} size={44} />
+            <span className="max-w-full truncate text-xs font-700 text-ink">
+              {accusedName}
+            </span>
+            {accusedRole && (
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-700 text-ink"
+                style={{ background: ROLE_COLOR[accusedRole] }}
+              >
+                {ROLE_LABELS[accusedRole].roman}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div
+          className={[
+            'mt-3 flex items-center justify-center gap-2 rounded-xl px-3 py-1.5',
+            caught ? 'bg-teal/15' : 'bg-vermilion/15',
+          ].join(' ')}
+        >
+          <VerdictMark ok={caught === true} size={22} />
+          <span
+            className={[
+              'font-display text-sm font-800',
+              caught ? 'text-teal' : 'text-vermilion-dark',
+            ].join(' ')}
+          >
+            {caught
+              ? `Caught the ${targetRoman}!`
+              : `The ${targetRoman} (${targetName}) got away!`}
+          </span>
+        </div>
       </motion.div>
 
       {/* Babu + Police: compact secondary row (they're already public). */}

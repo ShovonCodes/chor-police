@@ -144,8 +144,12 @@ function generateCode(rng: () => number): string {
 
 const AVATARS = ['🦁', '🦊', '🐯', '🦉', '🐼', '🐸', '🦅', '🐢'];
 
-// Human-looking names so a seated bot doesn't read as a bot.
-const BOT_NAMES = ['Rafi', 'Tania', 'Nadia', 'Hasan', 'Mim', 'Arif', 'Sakib', 'Priya'];
+// Human-looking Bangladeshi names so a seated bot doesn't read as a bot.
+const BOT_NAMES = [
+  'Rafi', 'Tania', 'Nadia', 'Hasan', 'Mim', 'Arif', 'Sakib', 'Priya',
+  'Shovon', 'Mithila', 'Iffat', 'Badhon', 'Awsaf', 'Meem', 'Ifat', 'Zeba',
+  'Akhi', 'Tasnia', 'Araf', 'Arish',
+];
 
 // Bot acts after a human-like delay so it doesn't fire instantly.
 const BOT_DRAW_DELAY = { min: 1500, max: 3500 };
@@ -258,7 +262,10 @@ export class MemoryGameStore implements GameStore {
       throw new StoreError('ROOM_FULL', 'Room already has 4 players.');
 
     const used = new Set(room.players.map((p) => p.name));
-    const name = BOT_NAMES.find((n) => !used.has(n)) ?? `Bot ${room.players.length}`;
+    const unused = BOT_NAMES.filter((n) => !used.has(n));
+    const name = unused.length
+      ? unused[Math.floor(this.rng() * unused.length)]
+      : `Bot ${room.players.length}`;
     room.players.push({
       id: newId('b'),
       name,

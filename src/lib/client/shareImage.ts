@@ -308,16 +308,17 @@ export async function shareResult(data: ShareData): Promise<ShareResult> {
     canShare?: (d: { files?: File[] }) => boolean;
   };
 
-  // Native share first — the image IS the payload, so we only take this path
-  // when the platform can share files. Calling share() before any clipboard
+  // Native share first — the image IS the payload. Deliberately NO url/link in
+  // the payload: chat apps (iMessage/Messenger) unfurl a shared URL into an OG
+  // link card and drop the image. The home URL is printed on the card itself
+  // and copied to the clipboard instead. Calling share() before any clipboard
   // work preserves the user-activation iOS Safari requires.
   if (typeof navigator.share === 'function' && nav.canShare?.({ files: [file] })) {
     try {
       await navigator.share({
         files: [file],
-        url: data.origin,
         title: 'Chor Police',
-        text: `Final standings — play at ${prettyUrl(data.origin)}`,
+        text: '🎴 Chor Police — final standings!',
       });
       const linkCopied = await copyLink(data.origin);
       return { method: 'share', linkCopied };

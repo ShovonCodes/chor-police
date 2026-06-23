@@ -14,10 +14,31 @@ const hind = Hind_Siliguri({
   weight: ["400", "500", "600", "700"],
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  process.env.RENDER_EXTERNAL_URL ??
+  "http://localhost:3000";
+
+const description =
+  "A real-time, 4-player web remake of the Bangladeshi party game Chor Police — Babu, Police, Dakat, Chor. Spin up a private room, share the code, and see if the Police can catch the thief. No signup.";
+
 export const metadata: Metadata = {
-  title: "Chor Police",
-  description:
-    "Raja Mantri Chor Sipahi — the classic 4-player guessing game, now online. Make a private room, share the code, and find out: Mera Mantri kaun hai?",
+  metadataBase: new URL(siteUrl),
+  title: "Chor Police — পুলিশ, চোর ধরো!",
+  description,
+  applicationName: "Chor Police",
+  openGraph: {
+    title: "Chor Police",
+    description,
+    siteName: "Chor Police",
+    type: "website",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Chor Police",
+    description,
+  },
 };
 
 export const viewport: Viewport = {

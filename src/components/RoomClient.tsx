@@ -230,10 +230,24 @@ function QuickJoin({
 }
 
 function CenterMsg({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   return (
-    <main className="safe-px flex flex-1 flex-col items-center justify-center gap-4">
-      <Emblem size={72} className="drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)]" />
-      <p className="font-bangla text-lg text-paper-200">{children}</p>
+    <main className="relative flex h-[100dvh] flex-col overflow-hidden">
+      <header className="safe-px safe-pt flex items-center py-3">
+        <button
+          type="button"
+          onClick={() => router.push('/')}
+          aria-label="Go to the home page"
+          className="flex items-center gap-2 transition active:scale-95"
+        >
+          <Emblem size={40} className="shrink-0 drop-shadow-[0_2px_5px_rgba(0,0,0,0.35)]" />
+          <Wordmark className="h-10 w-auto" />
+        </button>
+      </header>
+      <div className="safe-px flex flex-1 flex-col items-center justify-center gap-4">
+        <Emblem size={72} className="drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)]" />
+        <p className="font-bangla text-lg text-paper-200">{children}</p>
+      </div>
     </main>
   );
 }

@@ -173,7 +173,7 @@ export function Reveal({
   return (
     <motion.div
       animate={shake}
-      className="safe-px mx-auto flex w-full max-w-md flex-col items-center gap-3 py-3"
+      className="safe-px mx-auto flex w-full max-w-md flex-col items-center gap-2 py-2"
     >
       {/* Verdict banner — Police character + drawn tick/cross. */}
       <motion.div
@@ -181,20 +181,20 @@ export function Reveal({
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.9, type: 'spring', stiffness: 160, damping: 12 }}
         className={[
-          'flex items-center gap-3 rounded-[20px] border-2 px-5 py-2.5',
+          'flex items-center gap-2 rounded-2xl border-2 px-4 py-1.5',
           caught ? 'border-teal bg-teal/15' : 'border-vermilion bg-vermilion/15',
         ].join(' ')}
         aria-label={caught ? 'The Police caught the target' : 'The target escaped'}
       >
         <div className="relative">
-          <CharacterByRole role="police" size={52} title="Police" />
+          <CharacterByRole role="police" size={42} title="Police" />
           <span className="absolute -bottom-1 -right-1">
-            <VerdictMark ok={caught === true} size={26} />
+            <VerdictMark ok={caught === true} size={20} />
           </span>
         </div>
         <p
           className={[
-            'font-display text-3xl font-800',
+            'font-display text-2xl font-800',
             caught ? 'text-teal' : 'text-vermilion',
           ].join(' ')}
         >
@@ -207,11 +207,11 @@ export function Reveal({
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.1 }}
-        className="paper inked w-full px-4 py-3"
+        className="paper inked w-full px-3 py-2"
       >
         <div className="flex items-center justify-center gap-2">
-          <div className="flex w-[92px] flex-col items-center gap-1">
-            <Avatar emoji={avatarOf(policeId)} seat={seatOf(policeId)} size={44} />
+          <div className="flex w-[84px] flex-col items-center gap-0.5">
+            <Avatar emoji={avatarOf(policeId)} seat={seatOf(policeId)} size={36} />
             <span className="max-w-full truncate text-xs font-700 text-ink">
               {policeName}
             </span>
@@ -237,8 +237,8 @@ export function Reveal({
             </motion.span>
           </div>
 
-          <div className="flex w-[92px] flex-col items-center gap-1">
-            <Avatar emoji={avatarOf(accusedId)} seat={seatOf(accusedId)} size={44} />
+          <div className="flex w-[84px] flex-col items-center gap-0.5">
+            <Avatar emoji={avatarOf(accusedId)} seat={seatOf(accusedId)} size={36} />
             <span className="max-w-full truncate text-xs font-700 text-ink">
               {accusedName}
             </span>
@@ -255,7 +255,7 @@ export function Reveal({
 
         <div
           className={[
-            'mt-3 flex items-center justify-center gap-2 rounded-xl px-3 py-1.5',
+            'mt-2 flex items-center justify-center gap-2 rounded-xl px-3 py-1',
             caught ? 'bg-teal/15' : 'bg-vermilion/15',
           ].join(' ')}
         >
@@ -273,27 +273,29 @@ export function Reveal({
         </div>
       </motion.div>
 
-      {/* Babu + Police: compact secondary row (they're already public). */}
-      <div className="flex w-full items-start justify-center gap-6">
-        {sidePlayers.map((p) => {
-          const role: Role | null = assignments?.[p.id] ?? null;
-          return (
-            <div key={p.id} className="flex flex-col items-center gap-1">
-              {role && <CharacterByRole role={role} size={40} title={ROLE_LABELS[role].roman} />}
-              {role && (
-                <span
-                  className="rounded-full px-2 py-0.5 text-[10px] font-700 text-ink"
-                  style={{ background: ROLE_COLOR[role] }}
-                >
-                  {ROLE_LABELS[role].bn}
+      {/* Babu only — Police is already shown in the banner + recap above. */}
+      <div className="flex w-full items-center justify-center gap-2">
+        {sidePlayers
+          .filter((p) => assignments?.[p.id] === 'babu')
+          .map((p) => {
+            const role: Role | null = assignments?.[p.id] ?? null;
+            return (
+              <div key={p.id} className="flex items-center gap-2">
+                {role && <CharacterByRole role={role} size={30} title={ROLE_LABELS[role].roman} />}
+                {role && (
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[10px] font-700 text-ink"
+                    style={{ background: ROLE_COLOR[role] }}
+                  >
+                    {ROLE_LABELS[role].bn}
+                  </span>
+                )}
+                <span className="max-w-[120px] truncate text-[12px] text-paper-200">
+                  {p.name}
                 </span>
-              )}
-              <span className="max-w-[88px] truncate text-[11px] text-paper-200">
-                {p.name}
-              </span>
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
       </div>
 
       {/* Center stage: the two outlaw cards slide in + scale up, then flip open. */}

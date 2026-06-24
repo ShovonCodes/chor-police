@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { motion } from 'motion/react';
 import type { ClientView } from '@/lib/server/store';
 import { Avatar } from './characters/Avatar';
 import { Button } from './ui/Button';
 import { Seal } from './brand/Seal';
+import { play } from '@/lib/client/sound';
 
 export function Lobby({
   view,
@@ -24,6 +25,19 @@ export function Lobby({
   const isHost = !!me?.isHost;
   const count = view.players.length;
   const hasBots = view.players.some((p) => p.isBot);
+
+  // Chime when a (human) player joins — heard by everyone already in the room,
+  // and by the joiner on their first lobby render. Bot adds don't count.
+  const prevHumans = useRef<number | null>(null);
+  useEffect(() => {
+    const humans = view.players.filter((p) => !p.isBot).length;
+    if (prevHumans.current === null) {
+      if (humans > 1) play('join'); // you joined a room that already had players
+    } else if (humans > prevHumans.current) {
+      play('join'); // someone joined while you're here
+    }
+    prevHumans.current = humans;
+  }, [view.players]);
 
   const share = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';

@@ -13,7 +13,8 @@ export type Cue =
   | 'lose'
   | 'whoosh'
   | 'tally-tick'
-  | 'tap';
+  | 'tap'
+  | 'join';
 
 const MUTE_KEY = 'chor-police:muted';
 
@@ -174,5 +175,12 @@ export function play(cue: Cue): void {
     case 'tally-tick':
       tone(c, { type: 'square', freq: 740, start: t, duration: 0.04, gain: 0.06 });
       break;
+    case 'join': {
+      // Friendly two-note rising chime — a new player at the table.
+      tone(c, { type: 'sine', freq: 660, start: t, duration: 0.16, gain: 0.12 });
+      tone(c, { type: 'sine', freq: 988, start: t + 0.1, duration: 0.22, gain: 0.12 });
+      tone(c, { type: 'triangle', freq: 1320, start: t + 0.1, duration: 0.18, gain: 0.04 });
+      break;
+    }
   }
 }

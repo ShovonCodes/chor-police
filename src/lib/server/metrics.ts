@@ -1,8 +1,4 @@
-// Server-side structured logging for Render (stdout). Two line shapes, both
-// grep-friendly:
-//   [cp:event]   event=room_created code=ABCD mode=rounds value=7
-//   [cp:metrics] rooms=3 players=9 humans=6 bots=3 connected=6 phase_drawing=2
-// Render timestamps every line, so we don't add our own.
+// Structured stdout logging for Render: [cp:event] and [cp:metrics] lines.
 
 type Fields = Record<string, string | number | boolean | null | undefined>;
 
@@ -33,8 +29,7 @@ export interface MetricsSnapshot {
   byPhase: Record<string, number>;
 }
 
-// Periodic snapshot. Single-process only (matches the in-memory store); on a
-// serverless deploy this interval won't run. Started once per process.
+// Periodic snapshot; single-process, once per process.
 export function startMetricsHeartbeat(getSnapshot: () => MetricsSnapshot): void {
   const g = globalThis as unknown as {
     __cpHeartbeat?: ReturnType<typeof setInterval>;
@@ -47,7 +42,7 @@ export function startMetricsHeartbeat(getSnapshot: () => MetricsSnapshot): void 
 
   const timer = setInterval(() => {
     const s = getSnapshot();
-    if (s.rooms === 0) return; // stay quiet while idle
+    if (s.rooms === 0) return;
     const phases: Fields = {};
     for (const [phase, count] of Object.entries(s.byPhase)) {
       phases[`phase_${phase}`] = count;
@@ -62,7 +57,6 @@ export function startMetricsHeartbeat(getSnapshot: () => MetricsSnapshot): void 
     });
   }, interval);
 
-  // Don't keep the process alive for metrics alone.
   (timer as { unref?: () => void }).unref?.();
   g.__cpHeartbeat = timer;
   logEvent('metrics_heartbeat_started', { interval_ms: interval });

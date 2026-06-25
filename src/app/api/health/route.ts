@@ -1,6 +1,4 @@
-// Lightweight liveness endpoint for uptime pingers / keep-warm crons.
-// Cheap on purpose: no game state touched, never cached.
-
+// Liveness endpoint for uptime pingers / keep-warm crons.
 export const dynamic = 'force-dynamic';
 
 export function GET() {

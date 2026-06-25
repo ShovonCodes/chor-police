@@ -26,8 +26,7 @@ export function Lobby({
   const count = view.players.length;
   const hasBots = view.players.some((p) => p.isBot);
 
-  // Chime when a (human) player joins — heard by everyone already in the room,
-  // and by the joiner on their first lobby render. Bot adds don't count.
+  // Chime when a human joins (everyone present + the joiner). Bots don't count.
   const prevHumans = useRef<number | null>(null);
   useEffect(() => {
     const humans = view.players.filter((p) => !p.isBot).length;

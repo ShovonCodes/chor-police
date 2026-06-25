@@ -121,8 +121,7 @@ export function Scoring({
   const deltas = view.round?.deltas ?? {};
   const maxDelta = Math.max(0, ...Object.values(deltas));
 
-  // After this round's scoring, would the next step end the match? (rounds played
-  // hit the target, or someone reached the target score.) If so, "Next" → podium.
+  // Is the match about to end (round count hit, or target score reached)?
   const isLastRound =
     view.mode === 'rounds'
       ? (view.round?.roundNumber ?? 0) >= view.modeValue

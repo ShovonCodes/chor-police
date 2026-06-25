@@ -259,9 +259,8 @@ export class MemoryGameStore implements GameStore {
     return { code, playerId };
   }
 
-  // Host fills an empty lobby seat with a bot. Bots are always `connected` (they
-  // have no SSE stream, so the presence ref-counter never touches them) which keeps
-  // `canStart` satisfiable with fewer than 4 humans.
+  // Bots are always `connected` (no SSE stream to ref-count), so canStart works
+  // with fewer than 4 humans.
   async addBot(code: string, hostId: PlayerId): Promise<void> {
     const entry = this.requireEntry(code);
     const { room } = entry;
@@ -303,8 +302,7 @@ export class MemoryGameStore implements GameStore {
     this.notify(code);
   }
 
-  // Play again: reset a finished match to the lobby with the same roster (scores
-  // cleared) so the group can start a fresh match. Host-only.
+  // Play again: reset to lobby with the same roster, scores cleared. Host-only.
   async restartMatch(code: string, hostId: PlayerId): Promise<void> {
     const entry = this.requireEntry(code);
     const { room } = entry;
@@ -406,11 +404,8 @@ export class MemoryGameStore implements GameStore {
     return band.min + Math.floor(this.rng() * (band.max - band.min));
   }
 
-  // Drives bots entirely server-side. In `drawing` each bot "looks" at its chit
-  // after a human-like delay; in `announce` a bot Police guesses blindly (50/50)
-  // after a delay. Idempotent via per-round armed flags plus a phase re-check
-  // inside each timer — the same shape as scheduleAnnounce/scheduleScore. Called
-  // at the end of advanceRoom, so it reacts to every phase transition.
+  // Drives bots server-side: draw during `drawing`, guess (50/50) if Police in
+  // `announce`. Idempotent via per-round armed flags + a phase re-check per timer.
   private scheduleBots(code: string): void {
     const entry = this.rooms.get(code);
     if (!entry) return;
@@ -547,9 +542,8 @@ export class MemoryGameStore implements GameStore {
     const assignments: Record<PlayerId, Role> | null =
       revealed && round ? { ...round.assignments } : null;
 
-    // Babu/Police become public at the guess. We also surface them during the
-    // all-drawn grace ("prepare to guess") so spectators can see who's about to
-    // guess — they're public a beat later anyway. Chor/Dakat stay hidden until reveal.
+    // Babu/Police are public at the guess and during the all-drawn grace;
+    // Chor/Dakat stay hidden until reveal.
     const allDrawn =
       room.players.length > 0 && room.players.every((p) => entry.drawn.has(p.id));
     let publicRoles: Record<PlayerId, Role> = {};
@@ -620,9 +614,8 @@ export class MemoryGameStore implements GameStore {
     return room;
   }
 
-  // Drop rooms that have no live connections and have been idle past the TTL.
-  // A room with ≥1 open SSE stream (conns) is never evicted, so players sitting
-  // on the podium / mid-game are safe; abandoned rooms are reclaimed.
+  // Drop rooms idle past the TTL with no live connections (mid-game rooms hold a
+  // connection, so they're safe).
   evictStaleRooms(): void {
     const ttl = Number(process.env.CP_ROOM_TTL_MS ?? 1_800_000); // 30 min
     if (!(ttl > 0)) return;

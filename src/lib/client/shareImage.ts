@@ -1,9 +1,7 @@
 'use client';
 
-// Builds a 1080×1920 (9:16 story) PNG of the final standings, fully client-side,
-// and pushes it to the native share sheet (Web Share API) with a download
-// fallback. The home URL is copied to the clipboard so the sharer can drop it
-// into a story link sticker — a story image's pixels can't be tappable links.
+// Builds a 1080×1920 story PNG of the final standings and shares it via the
+// Web Share API (download fallback). The home URL is copied to the clipboard.
 
 export interface ShareRow {
   name: string;
@@ -113,7 +111,6 @@ function avatar(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = `${Math.round(r * 0.95)}px ${family()}`;
-  // Nudge for emoji optical centering.
   ctx.fillText(emoji, cx, cy + r * 0.06);
   ctx.restore();
 }
@@ -132,7 +129,6 @@ export async function buildShareCard(data: ShareData): Promise<Blob> {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D context unavailable.');
 
-  // Background — felt with a soft radial glow toward the top.
   ctx.fillStyle = C.felt900;
   ctx.fillRect(0, 0, W, H);
   const bg = ctx.createRadialGradient(540, 440, 80, 540, 980, 1250);
@@ -142,7 +138,6 @@ export async function buildShareCard(data: ShareData): Promise<Blob> {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  // Header wordmark — "Chor" marigold + "Police" vermilion, centered.
   ctx.textBaseline = 'alphabetic';
   ctx.font = `800 76px ${fam}`;
   const w1 = ctx.measureText('Chor ').width;
@@ -154,7 +149,6 @@ export async function buildShareCard(data: ShareData): Promise<Blob> {
   ctx.fillStyle = C.vermilion;
   ctx.fillText('Police', startX + w1, 150);
 
-  // Room code pill.
   ctx.font = `700 34px ${fam}`;
   const codeText = `ROOM ${data.code}`;
   const cw = ctx.measureText(codeText).width;
@@ -167,7 +161,6 @@ export async function buildShareCard(data: ShareData): Promise<Blob> {
   ctx.textBaseline = 'middle';
   ctx.fillText(codeText, W / 2, 220);
 
-  // Winner spotlight card.
   const winner = data.rows[0];
   const cardX = 220;
   const cardY = 300;
@@ -205,7 +198,6 @@ export async function buildShareCard(data: ShareData): Promise<Blob> {
     ctx.fillText(`${winner.score}`, W / 2, cardY + 530);
   }
 
-  // Standings rows.
   const rowX = 80;
   const rowW = W - rowX * 2;
   const rowH = 156;
@@ -243,7 +235,6 @@ export async function buildShareCard(data: ShareData): Promise<Blob> {
     y += rowH + gap;
   }
 
-  // Footer CTA — visible home URL.
   const ctaY = 1700;
   const ctaH = 150;
   const ctaGrad = ctx.createLinearGradient(rowX, ctaY, rowX, ctaY + ctaH);
@@ -308,11 +299,8 @@ export async function shareResult(data: ShareData): Promise<ShareResult> {
     canShare?: (d: { files?: File[] }) => boolean;
   };
 
-  // Native share first — the image IS the payload. Deliberately NO url/link in
-  // the payload: chat apps (iMessage/Messenger) unfurl a shared URL into an OG
-  // link card and drop the image. The home URL is printed on the card itself
-  // and copied to the clipboard instead. Calling share() before any clipboard
-  // work preserves the user-activation iOS Safari requires.
+  // No url in the payload: chat apps unfurl a shared link and drop the image.
+  // share() runs before clipboard work to keep the iOS user-activation.
   if (typeof navigator.share === 'function' && nav.canShare?.({ files: [file] })) {
     try {
       await navigator.share({
@@ -330,8 +318,7 @@ export async function shareResult(data: ShareData): Promise<ShareResult> {
     }
   }
 
-  // Fallback: secure context but no file-share support → unsupported; otherwise
-  // the page is served over plain HTTP, which disables Web Share entirely.
+  // Plain-HTTP context disables Web Share entirely; else just unsupported.
   const linkCopied = await copyLink(data.origin);
   downloadBlob(blob, file.name);
   const reason: ShareResult['reason'] =

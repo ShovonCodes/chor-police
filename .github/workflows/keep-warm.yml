@@ -1,18 +1,13 @@
 name: Keep Render warm
 
-# Pings the app so Render's free tier doesn't spin down (it sleeps after
-# ~15 min of no inbound traffic; the cold restart takes ~30-50s).
-#
-# NOTE: GitHub's scheduled runs are best-effort and often delayed/skipped
-# under load, so this is not a guarantee. For reliable warmth use a dedicated
-# uptime pinger (UptimeRobot / cron-job.org) hitting /api/health every 5 min.
+# Pings the app so Render's free tier doesn't idle-spin-down. GitHub cron is
+# best-effort; a dedicated uptime pinger is more reliable.
 
 on:
   schedule:
-    - cron: '*/10 * * * *' # every 10 minutes (GitHub may run it late)
-  workflow_dispatch: {} # allow manual runs
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
 
-# Don't pile up overlapping pings.
 concurrency:
   group: keep-warm
   cancel-in-progress: true

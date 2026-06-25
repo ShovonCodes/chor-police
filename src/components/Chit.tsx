@@ -133,8 +133,7 @@ export function Chit({
   );
 }
 
-// All-drawn grace: the Police sees the prepare cue; everyone else sees who is
-// about to guess and which outlaw they're hunting this round.
+// All-drawn grace: Police sees the prepare cue; others see who's guessing + target.
 function PrepareToGuess({
   view,
   reduce,

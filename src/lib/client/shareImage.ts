@@ -161,78 +161,109 @@ export async function buildShareCard(data: ShareData): Promise<Blob> {
   ctx.textBaseline = 'middle';
   ctx.fillText(codeText, W / 2, 220);
 
-  const winner = data.rows[0];
-  const cardX = 220;
-  const cardY = 300;
-  const cardW = W - cardX * 2;
-  const cardH = 560;
-  ctx.save();
-  ctx.shadowColor = 'rgba(244,160,28,0.55)';
-  ctx.shadowBlur = 50;
-  const paperGrad = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
-  paperGrad.addColorStop(0, C.paper50);
-  paperGrad.addColorStop(1, C.paper300);
-  roundRect(ctx, cardX, cardY, cardW, cardH, 44);
-  ctx.fillStyle = paperGrad;
-  ctx.fill();
-  ctx.restore();
-  roundRect(ctx, cardX, cardY, cardW, cardH, 44);
-  ctx.lineWidth = 7;
-  ctx.strokeStyle = C.marigold;
-  ctx.stroke();
-
-  if (winner) {
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `96px ${fam}`;
-    ctx.fillText('👑', W / 2, cardY + 110);
-    avatar(ctx, winner.emoji, winner.seat, W / 2, cardY + 280, 110);
-    ctx.font = `700 38px ${fam}`;
-    ctx.fillStyle = C.marigoldDark;
-    ctx.fillText('CHAMPION', W / 2, cardY + 420);
-    ctx.font = `800 64px ${fam}`;
-    ctx.fillStyle = C.vermilionDark;
-    ctx.fillText(fitText(ctx, winner.name, cardW - 80), W / 2, cardY + 478);
-    ctx.font = `800 56px ${fam}`;
-    ctx.fillStyle = C.marigoldDark;
-    ctx.fillText(`${winner.score}`, W / 2, cardY + 530);
-  }
+  ctx.font = `800 54px ${fam}`;
+  ctx.fillStyle = C.paper50;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('🏆 Final standings', W / 2, 350);
 
   const rowX = 80;
   const rowW = W - rowX * 2;
-  const rowH = 156;
-  const gap = 22;
-  let y = 920;
-  for (const r of data.rows) {
-    const cy = y + rowH / 2;
-    roundRect(ctx, rowX, y, rowW, rowH, 30);
-    if (r.isWinner) {
-      ctx.fillStyle = 'rgba(26,92,71,0.92)';
-      ctx.fill();
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = C.marigold;
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = 'rgba(17,74,57,0.75)';
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(253,246,227,0.22)';
-      ctx.stroke();
+
+  // Olympic podium: 2nd (left/silver) · 1st (center/gold) · 3rd (right/bronze).
+  const [first, second, third, fourth] = data.rows;
+  const colW = 284;
+  const colGap = 24;
+  const podX = 90;
+  const yBase = 1320;
+  const METAL: Record<number, { from: string; to: string; ring: string }> = {
+    1: { from: '#f6c544', to: '#d97e0a', ring: '#b8650a' },
+    2: { from: '#e6eaee', to: '#a9b2ba', ring: '#8c959d' },
+    3: { from: '#e0a473', to: '#b87333', ring: '#8f561f' },
+  };
+
+  const drawSpot = (row: ShareRow | undefined, place: number, colIndex: number) => {
+    if (!row) return;
+    const height = place === 1 ? 380 : place === 2 ? 290 : 240;
+    const x = podX + colIndex * (colW + colGap);
+    const top = yBase - height;
+    const cx = x + colW / 2;
+    const r = place === 1 ? 96 : 80;
+    const metal = METAL[place];
+
+    ctx.save();
+    if (place === 1) {
+      ctx.shadowColor = 'rgba(244,160,28,0.55)';
+      ctx.shadowBlur = 45;
     }
+    const g = ctx.createLinearGradient(x, top, x, yBase);
+    g.addColorStop(0, metal.from);
+    g.addColorStop(1, metal.to);
+    ctx.beginPath();
+    ctx.roundRect(x, top, colW, height, [28, 28, 0, 0]);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.restore();
+    ctx.beginPath();
+    ctx.roundRect(x, top, colW, height, [28, 28, 0, 0]);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = metal.ring;
+    ctx.stroke();
+
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `60px ${fam}`;
-    ctx.fillText(MEDALS[r.rank] ?? `${r.rank + 1}`, rowX + 80, cy);
-    avatar(ctx, r.emoji, r.seat, rowX + 220, cy, 52);
-    ctx.textAlign = 'left';
-    ctx.font = `700 46px ${fam}`;
-    ctx.fillStyle = C.paper50;
-    ctx.fillText(fitText(ctx, r.name, rowW - 480), rowX + 300, cy);
-    ctx.textAlign = 'right';
-    ctx.font = `800 52px ${fam}`;
+    ctx.font = `64px ${fam}`;
+    ctx.fillText(MEDALS[place - 1], cx, top + 58);
+
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = `800 50px ${fam}`;
     ctx.fillStyle = C.gold;
-    ctx.fillText(`${r.score}`, rowX + rowW - 36, cy);
-    y += rowH + gap;
+    ctx.fillText(`${row.score}`, cx, top - 18);
+
+    ctx.font = `700 40px ${fam}`;
+    ctx.fillStyle = C.paper50;
+    ctx.fillText(fitText(ctx, row.name, colW - 16), cx, top - 70);
+
+    const avatarCY = top - 70 - 36 - r;
+    avatar(ctx, row.emoji, row.seat, cx, avatarCY, r);
+
+    if (place === 1) {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `92px ${fam}`;
+      ctx.fillText('👑', cx, avatarCY - r - 30);
+    }
+  };
+
+  // Draw the winner last so its glow/crown sit cleanly over the neighbours.
+  drawSpot(second, 2, 0);
+  drawSpot(third, 3, 2);
+  drawSpot(first, 1, 1);
+
+  if (fourth) {
+    const ry = 1380;
+    const rh = 128;
+    const rcy = ry + rh / 2;
+    roundRect(ctx, rowX, ry, rowW, rh, 28);
+    ctx.fillStyle = 'rgba(17,74,57,0.75)';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(253,246,227,0.22)';
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `800 44px ${fam}`;
+    ctx.fillStyle = C.paper200;
+    ctx.fillText('4', rowX + 60, rcy);
+    avatar(ctx, fourth.emoji, fourth.seat, rowX + 150, rcy, 48);
+    ctx.textAlign = 'left';
+    ctx.font = `700 44px ${fam}`;
+    ctx.fillStyle = C.paper50;
+    ctx.fillText(fitText(ctx, fourth.name, rowW - 380), rowX + 220, rcy);
+    ctx.textAlign = 'right';
+    ctx.font = `800 50px ${fam}`;
+    ctx.fillStyle = C.gold;
+    ctx.fillText(`${fourth.score}`, rowX + rowW - 36, rcy);
   }
 
   const ctaY = 1700;

@@ -117,15 +117,6 @@ src/
 supabase/schema.sql     # 🗃️ deferred Postgres DDL
 ```
 
-## ☁️ Deployment
-
-**Live at [chorpolice.fun](https://chorpolice.fun)** 🌐 — deployed on **Render** (single always-on instance) behind a custom domain (DNS at Hostinger: apex `A → 216.24.57.1`, `www` `CNAME → *.onrender.com`).
-
-The backend keeps room state **in memory in a single Node process** with long-lived SSE connections. That means:
-
-- ✅ **Single always-on host** (Render, Railway, Fly, a VPS — one `next start` instance): works as-is. _Caveat: in-progress games reset on redeploy/restart; idle rooms are auto-reclaimed._
-- ⚠️ **Vercel / serverless / multi-instance:** not supported as-is — separate instances don't share the in-memory state and SSE connections get cut by function timeouts. For that, wire the deferred **Supabase** backend (Postgres for shared state + Supabase Realtime for push) via the existing `GameStore` interface and `supabase/schema.sql`.
-
 **Useful env vars:** `NEXT_PUBLIC_SITE_URL` (canonical/OG/share URL — set to `https://chorpolice.fun`), `CP_ROOM_TTL_MS` / `CP_SWEEP_INTERVAL_MS` (idle-room eviction), `CP_METRICS_INTERVAL_MS` (metrics cadence).
 
 ## 🗺️ Roadmap
